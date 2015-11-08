@@ -1,6 +1,10 @@
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.security.KeyStore;
 import java.security.Security;
 import java.security.cert.PKIXParameters;
@@ -16,8 +20,7 @@ import javax.security.cert.CertificateExpiredException;
 
 
 public class SSLSocketClient {
-
-
+	
 	private static boolean isValid(X509Certificate cert,javax.security.cert.X509Certificate certRoot){
 		  try {
 		    cert.verify(certRoot.getPublicKey());
@@ -45,11 +48,17 @@ public class SSLSocketClient {
 
 			    SSLSocket socket;
 			    //javax.security.cert.X509Certificate[] cert;
-				try {
+				//SSL connection
+			    try {
 					//tcp connect
 					socket = (SSLSocket)factory.createSocket(urlString, port);
 				    SSLSession ss = socket.getSession();
 			        // tls handshake
+				    // here java inturns at tcp layer verifies certificates 
+				    // so it will fail if certificates are invalid
+				    //the code will work only if certificates are valid or safe
+				    // the right way to code will be to write a wrapper for self
+				    // certificate checking ! 
 			        socket.startHandshake();
 			        System.out.println("Handshake Done");
 			        javax.security.cert.X509Certificate[] cert =ss.getPeerCertificateChain();
@@ -79,7 +88,9 @@ public class SSLSocketClient {
 			        
 				} catch (IOException io) {
 					// can be tcp connect or handshake failed.
-					io.printStackTrace();
+					//io.printStackTrace();
+					System.out.print("\n \n System exiting due to unsafe site or unsafe  certificates\n\n");
+					System.exit(1);
 				}
 				 //read all the trusted CA from java keystore
 				 // Load the JDK's cacerts keystore file
@@ -108,6 +119,37 @@ public class SSLSocketClient {
 		                	System.out.println("Verified!!!!!");//cert.verify(certRoot.getPublicKey());
 		                }
 		            }
+		          
+		         // Send HTTPS request
+		         // HTTP GET request
+		       
+		            urlString = "http://"+urlString;
+		        	URL obj = new URL(urlString);
+		        	HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+
+		        	// optional default is GET
+		        	con.setRequestMethod("GET");
+
+		        	//add request header
+		        	con.setRequestProperty("User-Agent", "Google Chrome 43.0.2357.134");
+
+		        	int responseCode = con.getResponseCode();
+		        	System.out.println("\nSending 'GET' request to URL :" + urlString);
+		        	System.out.println("Response Code :" + responseCode);
+
+		        	BufferedReader in = new BufferedReader(
+		        	        new InputStreamReader(con.getInputStream()));
+		        	String inputLine;
+		        	StringBuffer response = new StringBuffer();
+
+	        		while ((inputLine = in.readLine()) != null) {
+	        			response.append(inputLine);
+	        		}
+	        		in.close();
+
+	        		//print result
+	        		System.out.println(response.toString());
+		            
 			    
 
 	  }	
